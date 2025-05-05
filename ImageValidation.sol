@@ -2,24 +2,55 @@
 pragma solidity ^0.8.0;
 
 interface IImageDepository {
-    function search(string calldata userInfo) external view returns (string memory, string memory);
+    // Updated search function returns all extended parameters.
+    function search(string calldata imageId) external view returns (
+        string memory originalIpfs,
+        string memory logoIpfs,
+        string memory watermarkIpfs,
+        uint256 scramblingParamA,
+        uint256 scramblingParamB,
+        uint256 N,
+        uint256 l,
+        uint256 n,
+        string memory waveletName
+    );
+    
     function authorizeUser(address user) external;
-    function auth_user(address user) external view returns (bool);  // Check if a user is authorized
+    function auth_user(address user) external view returns (bool);
 }
 
 contract ImageValidation {
     address public OWNER;
     IImageDepository public repository;
 
-    struct KeyInfo {
-        string ipfsAddress;
-        string scramblingParams;
+    struct ImageResult {
+        string originalIpfs;
+        string logoIpfs;
+        string watermarkIpfs;
+        uint256 scramblingParamA;
+        uint256 scramblingParamB;
+        uint256 N;
+        uint256 l;
+        uint256 n;
+        string waveletName;
     }
     
-    mapping(string => KeyInfo) public results;
+    // Mapping by image identifier to store retrieved results
+    mapping(string => ImageResult) public results;
 
     event Deposit(address indexed from, uint256 value);
-    event SearchPerformed(string userInfo, string ipfsAddress, string scramblingParams);
+    event SearchPerformed(
+        string indexed imageId,
+        string originalIpfs,
+        string logoIpfs,
+        string watermarkIpfs,
+        uint256 scramblingParamA,
+        uint256 scramblingParamB,
+        uint256 N,
+        uint256 l,
+        uint256 n,
+        string waveletName
+    );
 
     constructor(address _repositoryAddress) {
         OWNER = msg.sender;
@@ -38,17 +69,57 @@ contract ImageValidation {
         return true;
     }
 
-    // Search function to call the repository's search and store result
-    function search(string memory userInfo) public onlyAuthorized {
-        (string memory ipfsAddress, string memory scramblingParams) = repository.search(userInfo);
-        results[userInfo] = KeyInfo(ipfsAddress, scramblingParams);
-        emit SearchPerformed(userInfo, ipfsAddress, scramblingParams);
+    // Search function: calls the repository's search function and stores the returned data locally.
+    function search(string memory imageId) public onlyAuthorized {
+        (
+            string memory originalIpfs,
+            string memory logoIpfs,
+            string memory watermarkIpfs,
+            uint256 scramblingParamA,
+            uint256 scramblingParamB,
+            uint256 N,
+            uint256 l,
+            uint256 n,
+            string memory waveletName
+        ) = repository.search(imageId);
+        results[imageId] = ImageResult(
+            originalIpfs,
+            logoIpfs,
+            watermarkIpfs,
+            scramblingParamA,
+            scramblingParamB,
+            N,
+            l,
+            n,
+            waveletName
+        );
+        emit SearchPerformed(imageId, originalIpfs, logoIpfs, watermarkIpfs, scramblingParamA, scramblingParamB, N, l, n, waveletName);
     }
 
-    // Get result stored in results mapping
-    function getResult(string memory userInfo) public view onlyAuthorized returns (string memory, string memory) {
-        KeyInfo memory result = results[userInfo];
-        return (result.ipfsAddress, result.scramblingParams);
+    // Get result stored in the results mapping.
+    function getResult(string memory imageId) public view onlyAuthorized returns (
+        string memory originalIpfs,
+        string memory logoIpfs,
+        string memory watermarkIpfs,
+        uint256 scramblingParamA,
+        uint256 scramblingParamB,
+        uint256 N,
+        uint256 l,
+        uint256 n,
+        string memory waveletName
+    ) {
+        ImageResult memory res = results[imageId];
+        return (
+            res.originalIpfs,
+            res.logoIpfs,
+            res.watermarkIpfs,
+            res.scramblingParamA,
+            res.scramblingParamB,
+            res.N,
+            res.l,
+            res.n,
+            res.waveletName
+        );
     }
 
     // Fallback function to receive Ether
